@@ -140,6 +140,7 @@ export type Context<
 	Path extends string | undefined = undefined
 > = Prettify<
 	{
+		"~Route": Route
 		body: PrettifyIfObject<Route['body'] & Singleton['resolve']['body']>
 		query: undefined extends Route['query']
 			? {} extends NonNullable<Singleton['resolve']['query']>

@@ -6,7 +6,11 @@ import type {
 	redirect as Redirect
 } from './utils'
 
-import { ElysiaCustomStatusResponse, status, type SelectiveStatus } from './error'
+import {
+	ElysiaCustomStatusResponse,
+	status,
+	type SelectiveStatus
+} from './error'
 import type {
 	RouteSchema,
 	Prettify,
@@ -23,7 +27,9 @@ type CheckExcessProps<T, U> = 0 extends 1 & T
 	: U extends U
 		? Exclude<keyof T, keyof U> extends never
 			? T
-			: { [K in keyof U]: U[K] } & { [K in Exclude<keyof T, keyof U>]: never }
+			: { [K in keyof U]: U[K] } & {
+					[K in Exclude<keyof T, keyof U>]: never
+				}
 		: never
 
 export type ErrorContext<
@@ -129,7 +135,7 @@ export type ErrorContext<
 
 type PrettifyIfObject<T> = T extends object ? Prettify<T> : T
 
-export type Context<
+export type ContextOriginal<
 	in out Route extends RouteSchema = {},
 	in out Singleton extends SingletonBase = {
 		decorator: {}
@@ -227,6 +233,214 @@ export type Context<
 		Singleton['derive'] &
 		Omit<Singleton['resolve'], keyof InputSchema>
 >
+
+export type ContextUgly<
+	Route extends RouteSchema = {},
+	Singleton extends SingletonBase = {
+		decorator: {}
+		store: {}
+		derive: {}
+		resolve: {}
+	},
+	Path extends string | undefined = undefined
+> = {
+	body: PrettifyIfObject<Route['body'] & Singleton['resolve']['body']>
+	query: undefined extends Route['query']
+		? {} extends NonNullable<Singleton['resolve']['query']>
+			? Record<string, string>
+			: Singleton['resolve']['query']
+		: PrettifyIfObject<Route['query'] & Singleton['resolve']['query']>
+	params: undefined extends Route['params']
+		? undefined extends Path
+			? {} extends NonNullable<Singleton['resolve']['params']>
+				? Record<string, string>
+				: Singleton['resolve']['params']
+			: Path extends `${string}/${':' | '*'}${string}`
+				? ResolvePath<Path>
+				: never
+		: PrettifyIfObject<Route['params'] & Singleton['resolve']['params']>
+	headers: undefined extends Route['headers']
+		? {} extends NonNullable<Singleton['resolve']['headers']>
+			? Record<string, string | undefined>
+			: Singleton['resolve']['headers']
+		: PrettifyIfObject<Route['headers'] & Singleton['resolve']['headers']>
+	cookie: undefined extends Route['cookie']
+		? Record<string, Cookie<unknown>>
+		: Record<string, Cookie<unknown>> &
+				Prettify<
+					{
+						[key in keyof Route['cookie']]-?: Cookie<
+							Route['cookie'][key]
+						>
+					} & {
+						[key in keyof Singleton['resolve']['cookie']]-?: Cookie<
+							Singleton['resolve']['cookie'][key]
+						>
+					}
+				>
+
+	server: Server | null
+	redirect: Redirect
+
+	set: {
+		headers: HTTPHeaders
+		status?: number | keyof StatusMap
+		/**
+		 * @deprecated Use inline redirect instead
+		 *
+		 * @example Migration example
+		 * ```ts
+		 * new Elysia()
+		 *     .get(({ redirect }) => redirect('/'))
+		 * ```
+		 */
+		redirect?: string
+		/**
+		 * ! Internal Property
+		 *
+		 * Use `Context.cookie` instead
+		 */
+		cookie?: Record<string, ElysiaCookie>
+	}
+
+	/**
+	 * Path extracted from incoming URL
+	 *
+	 * Represent a value extracted from URL
+	 *
+	 * @example '/id/9'
+	 */
+	path: string
+	/**
+	 * Path as registered to router
+	 *
+	 * Represent a path registered to a router, not a URL
+	 *
+	 * @example '/id/:id'
+	 */
+	route: string
+	request: Request
+	store: Singleton['store']
+
+	status: {} extends Route['response']
+		? typeof status
+		: SelectiveStatus<Route['response']>
+} & Singleton['decorator'] &
+	Singleton['derive'] &
+	Omit<Singleton['resolve'], keyof InputSchema>
+
+export type ContextWithRoute<
+	in out Route extends RouteSchema = {},
+	in out Singleton extends SingletonBase = {
+		decorator: {}
+		store: {}
+		derive: {}
+		resolve: {}
+	},
+	Path extends string | undefined = undefined
+> = Prettify<
+	{
+		'~Route': Route
+		body: PrettifyIfObject<Route['body'] & Singleton['resolve']['body']>
+		query: undefined extends Route['query']
+			? {} extends NonNullable<Singleton['resolve']['query']>
+				? Record<string, string>
+				: Singleton['resolve']['query']
+			: PrettifyIfObject<Route['query'] & Singleton['resolve']['query']>
+		params: undefined extends Route['params']
+			? undefined extends Path
+				? {} extends NonNullable<Singleton['resolve']['params']>
+					? Record<string, string>
+					: Singleton['resolve']['params']
+				: Path extends `${string}/${':' | '*'}${string}`
+					? ResolvePath<Path>
+					: never
+			: PrettifyIfObject<Route['params'] & Singleton['resolve']['params']>
+		headers: undefined extends Route['headers']
+			? {} extends NonNullable<Singleton['resolve']['headers']>
+				? Record<string, string | undefined>
+				: Singleton['resolve']['headers']
+			: PrettifyIfObject<
+					Route['headers'] & Singleton['resolve']['headers']
+				>
+		cookie: undefined extends Route['cookie']
+			? Record<string, Cookie<unknown>>
+			: Record<string, Cookie<unknown>> &
+					Prettify<
+						{
+							[key in keyof Route['cookie']]-?: Cookie<
+								Route['cookie'][key]
+							>
+						} & {
+							[key in keyof Singleton['resolve']['cookie']]-?: Cookie<
+								Singleton['resolve']['cookie'][key]
+							>
+						}
+					>
+
+		server: Server | null
+		redirect: Redirect
+
+		set: {
+			headers: HTTPHeaders
+			status?: number | keyof StatusMap
+			/**
+			 * @deprecated Use inline redirect instead
+			 *
+			 * @example Migration example
+			 * ```ts
+			 * new Elysia()
+			 *     .get(({ redirect }) => redirect('/'))
+			 * ```
+			 */
+			redirect?: string
+			/**
+			 * ! Internal Property
+			 *
+			 * Use `Context.cookie` instead
+			 */
+			cookie?: Record<string, ElysiaCookie>
+		}
+
+		/**
+		 * Path extracted from incoming URL
+		 *
+		 * Represent a value extracted from URL
+		 *
+		 * @example '/id/9'
+		 */
+		path: string
+		/**
+		 * Path as registered to router
+		 *
+		 * Represent a path registered to a router, not a URL
+		 *
+		 * @example '/id/:id'
+		 */
+		route: string
+		request: Request
+		store: Singleton['store']
+
+		status: {} extends Route['response']
+			? typeof status
+			: SelectiveStatus<Route['response']>
+	} & Singleton['decorator'] &
+		Singleton['derive'] &
+		Omit<Singleton['resolve'], keyof InputSchema>
+>
+
+export type Context<
+	Route extends RouteSchema = {},
+	Singleton extends SingletonBase = {
+		decorator: {}
+		store: {}
+		derive: {}
+		resolve: {}
+	},
+	Path extends string | undefined = undefined
+	// > = ContextOriginal<Route, Singleton, Path>
+	// > = ContextUgly<Route, Singleton, Path>
+> = ContextWithRoute<Route, Singleton, Path>
 
 // Use to mimic request before mapping route
 export type PreContext<
